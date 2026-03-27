@@ -1,84 +1,90 @@
 import { useState, useEffect } from 'react';
 
-export default function VoucherMonitor() {
-  const [activeUsers, setActiveUsers] = useState([]);
-  const [error, setError] = useState(null);
+export default function VIPLiveMonitor() {
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(null);
 
-  const fetchUsers = async () => {
+  const fetchLiveStatus = async () => {
     try {
-      const res = await fetch('/api/mikrotik');
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setActiveUsers(data);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
+      const response = await fetch('/api/mikrotik');
+      if (!response.ok) throw new Error("API থেকে ডাটা পাওয়া যাচ্ছে না।");
+      const data = await response.json();
+      
+      if (data.error) {
+        setErr(data.error);
+      } else {
+        setUsers(data);
+        setErr(null);
+      }
+    } catch (e) {
+      setErr("সার্ভার এরর: এপিআই ফাইলটি খুঁজে পাওয়া যাচ্ছে না।");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
-    const interval = setInterval(fetchUsers, 10000); // প্রতি ১০ সেকেন্ডে রিফ্রেশ
+    fetchLiveStatus();
+    const interval = setInterval(fetchLiveStatus, 8000); // প্রতি ৮ সেকেন্ডে লাইভ আপডেট
     return () => clearInterval(interval);
   }, []);
 
-  const formatBytes = (bytes) => {
-    if (!bytes || bytes === 0) return '0 MB';
-    const mb = bytes / (1024 * 1024);
-    return mb.toFixed(2) + ' MB';
+  const formatData = (bytes) => {
+    if (bytes === 0) return "0 MB";
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Segoe UI, Tahoma', backgroundColor: '#0f172a', minHeight: '100vh', color: '#e2e8f0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', padding: '15px 25px', borderRadius: '12px', marginBottom: '25px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', color: '#38bdf8' }}>VIP NETWORK LIVE MONITOR</h1>
-        <div style={{ background: '#0ea5e9', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold' }}>
-          Active Now: {activeUsers.length}
+    <div style={{ backgroundColor: '#0f172a', minHeight: '100vh', color: '#f8fafc', padding: '20px', fontFamily: 'Segoe UI, sans-serif' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', padding: '20px', borderRadius: '12px', marginBottom: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
+        <h1 style={{ margin: 0, fontSize: '22px', color: '#38bdf8' }}>VIP NETWORK LIVE MONITOR</h1>
+        <div style={{ background: '#0ea5e9', padding: '8px 20px', borderRadius: '8px', fontWeight: 'bold' }}>
+          Active Now: {users.length}
         </div>
-      </div>
+      </header>
 
-      {error && <div style={{ background: '#7f1d1d', color: '#fecaca', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>Error: {error}</div>}
-
-      {loading && activeUsers.length === 0 ? (
-        <div style={{ textAlign: 'center', marginTop: '50px' }}>
-          <div className="spinner"></div>
-          <p>Connecting to MikroTik...</p>
-        </div>
-      ) : (
-        <div style={{ overflowX: 'auto', background: '#1e293b', borderRadius: '15px', padding: '10px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '2px solid #334155', color: '#94a3b8' }}>
-                <th style={{ padding: '15px' }}>Voucher ID</th>
-                <th>IP Address</th>
-                <th>Uptime</th>
-                <th>Download</th>
-                <th>Upload</th>
-                <th>Remaining/Limit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeUsers.map((user, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #334155', transition: '0.3s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#2d3748'} onMouseOut={e => e.currentTarget.style.backgroundColor='transparent'}>
-                  <td style={{ padding: '15px', color: '#f8fafc', fontWeight: '600' }}>{user.user}</td>
-                  <td style={{ color: '#94a3b8' }}>{user.address}</td>
-                  <td style={{ color: '#fbbf24' }}>{user.uptime}</td>
-                  <td style={{ color: '#4ade80' }}>↓ {formatBytes(user['bytes-out'])}</td>
-                  <td style={{ color: '#f87171' }}>↑ {formatBytes(user['bytes-in'])}</td>
-                  <td style={{ color: '#cbd5e1' }}>{user.limit_uptime || 'N/A'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {err && (
+        <div style={{ background: '#7f1d1d', borderLeft: '5px solid #ef4444', color: '#fecaca', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+          <strong>Error:</strong> {err}
         </div>
       )}
-      <style jsx>{`
-        .spinner { border: 4px solid rgba(255,255,255,0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #38bdf8; animation: spin 1s linear infinite; margin: 0 auto 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      `}</style>
+
+      <div style={{ overflowX: 'auto', background: '#1e293b', borderRadius: '15px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', background: '#334155', color: '#cbd5e1' }}>
+              <th style={{ padding: '18px' }}>Voucher ID</th>
+              <th>IP Address</th>
+              <th>Uptime</th>
+              <th>Download</th>
+              <th>Upload</th>
+              <th>Time Limit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && users.length === 0 ? (
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '50px' }}>Connecting to MikroTik...</td></tr>
+            ) : users.length > 0 ? (
+              users.map((user, index) => (
+                <tr key={index} style={{ borderBottom: '1px solid #334155', transition: '0.3s' }}>
+                  <td style={{ padding: '18px' }}>
+                    <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{user.name}</span>
+                    <br/><small style={{ color: '#64748b' }}>{user.mac}</small>
+                  </td>
+                  <td style={{ color: '#94a3b8' }}>{user.ip}</td>
+                  <td style={{ color: '#fbbf24' }}>{user.uptime}</td>
+                  <td style={{ color: '#4ade80' }}>↓ {formatData(user.download)}</td>
+                  <td style={{ color: '#f87171' }}>↑ {formatData(user.upload)}</td>
+                  <td style={{ color: '#cbd5e1' }}>{user.limit}</td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>কোনো ইউজার বর্তমানে নেট চালাচ্ছে না।</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
