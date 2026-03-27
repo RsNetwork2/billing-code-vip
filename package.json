@@ -7,6 +7,6 @@
   },
   "dependencies": {
     "firebase-admin": "^11.11.1",
-    "routeros-client": "^2.0.0"
+    "routeros-client": "latest"
   }
 }
