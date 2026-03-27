@@ -28,14 +28,43 @@ export default function UltimateISPPanel() {
     else alert("ভুল পিন! সঠিক পিন দিন।");
   };
 
+  // আপডেট করা handleAddUser ফাংশন যা রাউটারেও ডাটা পাঠাবে
   const handleAddUser = async (e) => {
     e.preventDefault();
-    if (!formData.username || !formData.phone) return alert("নাম এবং ফোন নম্বর অবশ্যই দিতে হবে!");
+    if (!formData.username || !formData.phone || !formData.password) {
+      return alert("নাম, ফোন নম্বর এবং পাসওয়ার্ড অবশ্যই দিতে হবে!");
+    }
+
     try {
-      await addDoc(collection(db, 'users'), { ...formData, expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString() });
-      setFormData({ username: '', phone: '', password: '', package: '10 Mbps', price: '500', address: '', status: 'Active' });
-      alert("নতুন গ্রাহক ডাটাবেসে সেভ হয়েছে!");
-    } catch (err) { alert("Error: " + err.message); }
+      // ১. মাইক্রোটিক রাউটারে ইউজার তৈরির জন্য API কল করা
+      const mikrotikResponse = await fetch('/api/mikrotik', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+          profile: formData.package, // আপনার রাউটারের প্রোফাইল নামের সাথে মিল থাকতে হবে
+          action: 'add'
+        })
+      });
+
+      const mikrotikResult = await mikrotikResponse.json();
+
+      if (mikrotikResult.success) {
+        // ২. যদি রাউটারে সফলভাবে তৈরি হয়, তবেই ফায়ারবেস ডাটাবেসে সেভ হবে
+        await addDoc(collection(db, 'users'), { 
+          ...formData, 
+          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString() 
+        });
+
+        setFormData({ username: '', phone: '', password: '', package: '10 Mbps', price: '500', address: '', status: 'Active' });
+        alert("সফল! রাউটার এবং ডাটাবেস—উভয় জায়গায় গ্রাহক যোগ হয়েছে।");
+      } else {
+        alert("রাউটারে সেভ হয়নি: " + mikrotikResult.error);
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
   };
 
   const toggleStatus = async (id, currentStatus) => {
@@ -43,8 +72,28 @@ export default function UltimateISPPanel() {
     await updateDoc(doc(db, 'users', id), { status: newStatus });
   };
 
-  const handleDelete = async (id) => {
-    if (confirm("আপনি কি এই গ্রাহককে চিরতরে মুছে ফেলতে চান?")) await deleteDoc(doc(db, 'users', id));
+  const handleDelete = async (id, username) => {
+    if (confirm(`আপনি কি ${username}-কে চিরতরে মুছে ফেলতে চান? এটি রাউটার থেকেও মুছে যাবে।`)) {
+      try {
+        // রাউটার থেকে ইউজার মুছে ফেলার API কল
+        const response = await fetch('/api/mikrotik', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, action: 'delete' })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          await deleteDoc(doc(db, 'users', id));
+          alert("গ্রাহক সফলভাবে মুছে ফেলা হয়েছে।");
+        } else {
+          alert("রাউটার থেকে ডিলিট করা যায়নি: " + result.error);
+        }
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
   };
 
   const filteredUsers = users.filter(u => u.username.toLowerCase().includes(search.toLowerCase()) || u.phone.includes(search));
@@ -64,7 +113,6 @@ export default function UltimateISPPanel() {
 
   return (
     <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: 'Segoe UI, sans-serif' }}>
-      {/* Sidebar-style Header */}
       <header style={{ backgroundColor: '#1e293b', color: 'white', padding: '15px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div style={{ width: '40px', height: '40px', backgroundColor: '#3b82f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>VIP</div>
@@ -74,8 +122,6 @@ export default function UltimateISPPanel() {
       </header>
 
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px' }}>
-        
-        {/* Statistics Overview */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '25px', marginBottom: '40px' }}>
           {[
             { label: 'Total Clients', value: users.length, color: '#3b82f6' },
@@ -91,12 +137,12 @@ export default function UltimateISPPanel() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '30px' }}>
-          {/* Left Side: Add User Form */}
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '24px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)', height: 'fit-content' }}>
             <h3 style={{ margin: '0 0 25px', color: '#1e293b' }}>Register New User</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <input placeholder="Customer Name" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} style={inputStyle} />
+              <input placeholder="Customer Name (MikroTik Secret Name)" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} style={inputStyle} />
               <input placeholder="Phone Number" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} style={inputStyle} />
+              <input placeholder="MikroTik Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} style={inputStyle} />
               <input placeholder="Address" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} style={inputStyle} />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <select value={formData.package} onChange={(e) => setFormData({...formData, package: e.target.value})} style={inputStyle}>
@@ -108,7 +154,6 @@ export default function UltimateISPPanel() {
             </div>
           </div>
 
-          {/* Right Side: Customer Table */}
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '24px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
               <h3 style={{ margin: 0 }}>Customer Directory</h3>
@@ -144,7 +189,7 @@ export default function UltimateISPPanel() {
                         </button>
                       </td>
                       <td style={{ padding: '15px', textAlign: 'right' }}>
-                        <button onClick={() => handleDelete(user.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>🗑</button>
+                        <button onClick={() => handleDelete(user.id, user.username)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>🗑</button>
                       </td>
                     </tr>
                   ))}
