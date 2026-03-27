@@ -1,12 +1,16 @@
 {
-  "name": "mikrotik-bridge",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "billing-code-vip",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "start": "node index.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
-    "firebase-admin": "^11.11.1",
-    "routeros-client": "latest"
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "firebase": "latest"
   }
 }
