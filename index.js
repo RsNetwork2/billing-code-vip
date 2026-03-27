@@ -1,12 +1,21 @@
 const admin = require('firebase-admin');
 const RosApi = require('routeros-client').default;
 
-// ১. ফায়ারবেস কনফিগারেশন (Variables থেকে)
-const firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
-admin.initializeApp({
-  credential: admin.credential.cert(firebaseConfig)
-});
+// ডাটা লোড করার সময় এরর হ্যান্ডলিং
+let firebaseConfig;
+try {
+  firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+  admin.initializeApp({
+    credential: admin.credential.cert(firebaseConfig)
+  });
+  console.log("Firebase Admin SDK Initialized Successfully!");
+} catch (e) {
+  console.error("Error parsing FIREBASE_CONFIG:", e.message);
+  process.exit(1); // ভুল থাকলে অ্যাপ বন্ধ হয়ে যাবে যাতে লগে কারণ দেখা যায়
+}
+
 const db = admin.firestore();
+// বাকি কোড আগের মতোই থাকবে...
 
 // ২. মাইক্রোটিক কানেকশন (পোর্টসহ আইপি আলাদা করার লজিক)
 const hostWithPort = process.env.ROUTER_HOST; // যেমন: 59.152.99.22:7885
