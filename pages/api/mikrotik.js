@@ -11,31 +11,26 @@ export default async function handler(req, res) {
 
   try {
     const conn = await device.connect();
-    
-    // একটিভ হটস্পট ইউজার এবং ইউজার প্রোফাইল ডাটা সংগ্রহ
-    const [activeUsers, hotspotUsers] = await Promise.all([
+    const [activeUsers, allUsers] = await Promise.all([
       conn.write('/ip/hotspot/active/print'),
       conn.write('/ip/hotspot/user/print')
     ]);
     
-    const combinedData = activeUsers.map(active => {
-      const userData = hotspotUsers.find(u => u.name === active.user);
+    const data = activeUsers.map(active => {
+      const userDetails = allUsers.find(u => u.name === active.user);
       return {
         name: active.user,
         ip: active.address,
         mac: active['mac-address'],
         uptime: active.uptime,
-        download: parseInt(active['bytes-out'] || 0), 
-        upload: parseInt(active['bytes-in'] || 0),
-        limit: userData ? userData['limit-uptime'] : 'Unlimited',
-        comment: userData ? userData.comment : ''
+        download: (parseInt(active['bytes-out'] || 0) / (1024 * 1024)).toFixed(2) + " MB",
+        limit: userDetails ? userDetails['limit-uptime'] : 'No Limit'
       };
     });
 
     device.close();
-    return res.status(200).json(combinedData);
+    res.status(200).json(data);
   } catch (error) {
-    console.error("Mikrotik Connection Error:", error);
-    return res.status(500).json({ error: "রাউটার কানেক্ট হতে পারছে না। পোর্ট ৮৭২৮ ফরওয়ার্ডিং চেক করুন।" });
+    res.status(500).json({ error: "রাউটার কানেক্ট করা যাচ্ছে না।" });
   }
 }
