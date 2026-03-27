@@ -43,16 +43,14 @@ async function addMicrotikUser(newUser) {
     }
 }
 
-// ৩. ফায়ারবেস লিসেনার
-console.log("⏳ Waiting for new users in Firestore...");
-db.collection('users').onSnapshot(snapshot => {
-    snapshot.docChanges().forEach(change => {
-        if (change.type === 'added') {
-            const newUser = change.data();
-            console.log(`🔔 New user detected: ${newUser.username}`);
-            addMicrotikUser(newUser);
-        }
-    });
+// snapshot.docChanges() ব্যবহার করলে 'change.doc.data()' লিখতে হয়
+snapshot.docChanges().forEach((change) => {
+    if (change.type === 'added' || change.type === 'modified') {
+        const newUser = change.doc.data(); // এখানে .doc যোগ করা হয়েছে
+        console.log(`🔔 User detected: ${newUser.username}`);
+        addMicrotikUser(newUser);
+    }
+});
 }, err => {
     console.error("❌ Firestore Listen Error:", err.message);
 });
