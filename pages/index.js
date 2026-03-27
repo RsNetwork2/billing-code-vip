@@ -6,7 +6,6 @@ export default function Dashboard() {
   const [users, setUsers] = useState([]);
   const [formData, setFormData] = useState({ username: '', password: '', package: '30 Day' });
 
-  // ফায়ারবেস থেকে রিয়েল-টাইম ডাটা লোড করা
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
       const userList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -18,9 +17,11 @@ export default function Dashboard() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     if (!formData.username || !formData.password) return alert("সব ঘর পূরণ করুন!");
-    await addDoc(collection(db, 'users'), formData);
-    setFormData({ username: '', password: '', package: '30 Day' });
-    alert("ইউজার সফলভাবে যোগ হয়েছে!");
+    try {
+      await addDoc(collection(db, 'users'), formData);
+      setFormData({ username: '', password: '', package: '30 Day' });
+      alert("ইউজার সফলভাবে যোগ হয়েছে!");
+    } catch (err) { alert("এরর: " + err.message); }
   };
 
   const handleDelete = async (id, name) => {
@@ -30,41 +31,44 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-5 md:p-10 font-sans">
-      <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-xl overflow-hidden border border-gray-200">
-        <div className="bg-blue-700 p-6">
-          <h1 className="text-2xl font-bold text-white text-center">VIP NETWORK ISP Panel</h1>
+    <div style={{ backgroundColor: '#f3f4f6', minHeight: '100vh', padding: '20px', fontFamily: 'sans-serif' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        
+        <div style={{ backgroundColor: '#1d4ed8', padding: '20px', color: 'white', textAlign: 'center' }}>
+          <h1 style={{ margin: 0 }}>VIP NETWORK ISP Panel</h1>
         </div>
 
-        <div className="p-6">
-          <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <input className="p-3 border rounded shadow-sm focus:ring-2 focus:ring-blue-500" placeholder="Username" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} />
-            <input className="p-3 border rounded shadow-sm focus:ring-2 focus:ring-blue-500" placeholder="Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
-            <select className="p-3 border rounded shadow-sm bg-white" value={formData.package} onChange={(e) => setFormData({...formData, package: e.target.value})}>
+        <div style={{ padding: '20px' }}>
+          {/* ইউজার অ্যাড করার ফর্ম */}
+          <form onSubmit={handleAddUser} style={{ display: 'flex', gap: '10px', marginBottom: '30px', flexWrap: 'wrap' }}>
+            <input style={{ flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }} placeholder="Username" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} />
+            <input style={{ flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }} placeholder="Password" type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
+            <select style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }} value={formData.package} onChange={(e) => setFormData({...formData, package: e.target.value})}>
               <option value="30 Day">30 Day Profile</option>
               <option value="15 Day">15 Day Profile</option>
             </select>
-            <button className="bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">Add User</button>
+            <button style={{ backgroundColor: '#2563eb', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Add User</button>
           </form>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
+          {/* ইউজার লিস্ট টেবিল */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-4 border-b">Username</th>
-                  <th className="p-4 border-b">Password</th>
-                  <th className="p-4 border-b">Package</th>
-                  <th className="p-4 border-b text-center">Action</th>
+                <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #eee' }}>
+                  <th style={{ padding: '12px' }}>Username</th>
+                  <th style={{ padding: '12px' }}>Password</th>
+                  <th style={{ padding: '12px' }}>Package</th>
+                  <th style={{ padding: '12px', textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="p-4 border-b font-semibold">{user.username}</td>
-                    <td className="p-4 border-b text-gray-600">{user.password}</td>
-                    <td className="p-4 border-b text-blue-600 font-bold">{user.package}</td>
-                    <td className="p-4 border-b text-center">
-                      <button onClick={() => handleDelete(user.id, user.username)} className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600">Delete</button>
+                  <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '12px', fontWeight: 'bold' }}>{user.username}</td>
+                    <td style={{ padding: '12px', color: '#666' }}>{user.password}</td>
+                    <td style={{ padding: '12px', color: '#1d4ed8', fontWeight: 'bold' }}>{user.package}</td>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                      <button onClick={() => handleDelete(user.id, user.username)} style={{ backgroundColor: '#ef4444', color: 'white', padding: '5px 10px', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Delete</button>
                     </td>
                   </tr>
                 ))}
