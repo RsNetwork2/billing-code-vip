@@ -43,10 +43,9 @@ async function addMicrotikUser(newUser) {
     }
 }
 
-// snapshot.docChanges() ব্যবহার করলে 'change.doc.data()' লিখতে হয়
 snapshot.docChanges().forEach((change) => {
     if (change.type === 'added' || change.type === 'modified') {
-        const newUser = change.doc.data(); // এখানে .doc যোগ করা হয়েছে
+        const newUser = change.doc.data();
         console.log(`🔔 User detected: ${newUser.username}`);
         addMicrotikUser(newUser);
     }
