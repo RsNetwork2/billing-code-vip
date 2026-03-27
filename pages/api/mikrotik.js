@@ -4,9 +4,10 @@ export default async function handler(req, res) {
     const client = new RouterOSClient({
         host: '59.152.99.22', // আপনার রাউটার আইপি
         user: 'billing',      // আপনার এপিআই ইউজার
-        password: 'আপনার_পাসওয়ার্ড',
+        password: 'আপনার_পাসওয়ার্ড', 
         port: 8728,
-        keepalive: true
+        keepalive: true,
+        timeout: 15
     });
 
     try {
@@ -24,7 +25,7 @@ export default async function handler(req, res) {
 
         res.status(200).json(formattedUsers);
     } catch (error) {
-        console.error("Mikrotik Connection Error:", error);
-        res.status(500).json({ error: "রাউটার কানেক্ট করা যাচ্ছে না।" });
+        console.error("Router Connection Error:", error);
+        res.status(500).json({ error: "রাউটার কানেক্ট করা যাচ্ছে না। আপনার পোর্টে সমস্যা থাকতে পারে।" });
     }
 }
