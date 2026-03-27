@@ -1,12 +1,6 @@
 {
   "name": "vip-network-monitor",
-  "version": "1.2.1",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
-  },
+  "version": "1.0.0",
   "dependencies": {
     "next": "latest",
     "react": "latest",
