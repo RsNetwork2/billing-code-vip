@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const { RouterOSClient } = require('routeros-client'); // এখানে পরিবর্তন করা হয়েছে
+const { RouterOSClient } = require('routeros-client');
 
 // ১. ফায়ারবেস ইনিশিয়ালাইজেশন
 try {
@@ -23,7 +23,6 @@ async function addMicrotikUser(newUser) {
     const hostWithPort = process.env.ROUTER_HOST || "";
     const [host, port] = hostWithPort.includes(':') ? hostWithPort.split(':') : [hostWithPort, 8728];
 
-    // এখানে RouterOSClient ব্যবহার করা হয়েছে
     const client = new RouterOSClient({
         host: host,
         port: parseInt(port) || 8728,
@@ -36,16 +35,24 @@ async function addMicrotikUser(newUser) {
         console.log(`📡 Connecting to MikroTik at ${host}:${port}...`);
         const api = await client.connect();
         
-        await api.write('/ip/hotspot/user/add', [
-            '=name=' + newUser.username,
-            '=password=' + newUser.password,
-            '=profile=' + newUser.package
-        ]);
+        // নতুন লাইব্রেরিতে 'api.menu' ব্যবহার করে ইউজার অ্যাড করা হয়
+        const menu = api.menu('/ip/hotspot/user');
+        
+        await menu.add({
+            name: newUser.username,
+            password: newUser.password,
+            profile: newUser.package
+        });
         
         console.log(`✅ User ${newUser.username} added to MikroTik!`);
         await api.close();
     } catch (err) {
-        console.error("❌ MikroTik Error:", err.message);
+        // যদি ইউজার আগে থেকেই থাকে, তবে এরর না দেখিয়ে কনসোলে জানাবে
+        if (err.message.includes("already has")) {
+            console.log(`ℹ️ User ${newUser.username} already exists on MikroTik.`);
+        } else {
+            console.error("❌ MikroTik Error:", err.message);
+        }
     }
 }
 
@@ -54,8 +61,11 @@ console.log("⏳ Waiting for changes in Firestore 'users' collection...");
 
 db.collection('users').onSnapshot(snapshot => {
     snapshot.docChanges().forEach((change) => {
+        // শুধুমাত্র নতুন ডাটা যোগ হলে বা আপডেট হলে মাইক্রোটিকে পাঠাবে
         if (change.type === 'added' || change.type === 'modified') {
             const newUser = change.doc.data();
+            
+            // ফায়ারবেসের ফিল্ডগুলোর নাম (username, password, package) সঠিক আছে কি না চেক করে
             if (newUser.username && newUser.password) {
                 console.log(`🔔 User detected/updated: ${newUser.username}`);
                 addMicrotikUser(newUser);
