@@ -3,58 +3,52 @@ import { useState, useEffect } from 'react';
 export default function VIPLiveMonitor() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
 
-  const fetchLiveStatus = async () => {
+  const fetchStatus = async () => {
     try {
       const response = await fetch('/api/mikrotik');
-      if (!response.ok) throw new Error("API থেকে ডাটা পাওয়া যাচ্ছে না।");
-      const data = await response.json();
+      if (!response.ok) throw new Error("API ফাইলটি সার্ভারে পাওয়া যাচ্ছে না। ফোল্ডার নাম চেক করুন।");
       
-      if (data.error) {
-        setErr(data.error);
-      } else {
+      const data = await response.json();
+      if (data.error) setErrorMsg(data.error);
+      else {
         setUsers(data);
-        setErr(null);
+        setErrorMsg(null);
       }
     } catch (e) {
-      setErr("সার্ভার এরর: এপিআই ফাইলটি খুঁজে পাওয়া যাচ্ছে না।");
+      setErrorMsg(e.message);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchLiveStatus();
-    const interval = setInterval(fetchLiveStatus, 8000); // প্রতি ৮ সেকেন্ডে লাইভ আপডেট
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 10000); // ১০ সেকেন্ড পর পর আপডেট
     return () => clearInterval(interval);
   }, []);
 
-  const formatData = (bytes) => {
-    if (bytes === 0) return "0 MB";
-    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
-  };
+  const toMB = (bytes) => (bytes / (1024 * 1024)).toFixed(2) + " MB";
 
   return (
-    <div style={{ backgroundColor: '#0f172a', minHeight: '100vh', color: '#f8fafc', padding: '20px', fontFamily: 'Segoe UI, sans-serif' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', padding: '20px', borderRadius: '12px', marginBottom: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
-        <h1 style={{ margin: 0, fontSize: '22px', color: '#38bdf8' }}>VIP NETWORK LIVE MONITOR</h1>
-        <div style={{ background: '#0ea5e9', padding: '8px 20px', borderRadius: '8px', fontWeight: 'bold' }}>
-          Active Now: {users.length}
-        </div>
+    <div style={{ backgroundColor: '#0f172a', minHeight: '100vh', color: '#f8fafc', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1e293b', padding: '15px 25px', borderRadius: '12px', marginBottom: '20px' }}>
+        <h1 style={{ margin: 0, fontSize: '20px', color: '#38bdf8' }}>VIP NETWORK LIVE MONITOR</h1>
+        <div style={{ background: '#0ea5e9', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold' }}>Active Now: {users.length}</div>
       </header>
 
-      {err && (
+      {errorMsg && (
         <div style={{ background: '#7f1d1d', borderLeft: '5px solid #ef4444', color: '#fecaca', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-          <strong>Error:</strong> {err}
+          <strong>Error:</strong> {errorMsg}
         </div>
       )}
 
-      <div style={{ overflowX: 'auto', background: '#1e293b', borderRadius: '15px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+      <div style={{ overflowX: 'auto', background: '#1e293b', borderRadius: '15px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '850px' }}>
           <thead>
             <tr style={{ textAlign: 'left', background: '#334155', color: '#cbd5e1' }}>
-              <th style={{ padding: '18px' }}>Voucher ID</th>
+              <th style={{ padding: '15px' }}>Voucher ID</th>
               <th>IP Address</th>
               <th>Uptime</th>
               <th>Download</th>
@@ -66,21 +60,18 @@ export default function VIPLiveMonitor() {
             {loading && users.length === 0 ? (
               <tr><td colSpan="6" style={{ textAlign: 'center', padding: '50px' }}>Connecting to MikroTik...</td></tr>
             ) : users.length > 0 ? (
-              users.map((user, index) => (
-                <tr key={index} style={{ borderBottom: '1px solid #334155', transition: '0.3s' }}>
-                  <td style={{ padding: '18px' }}>
-                    <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{user.name}</span>
-                    <br/><small style={{ color: '#64748b' }}>{user.mac}</small>
-                  </td>
-                  <td style={{ color: '#94a3b8' }}>{user.ip}</td>
-                  <td style={{ color: '#fbbf24' }}>{user.uptime}</td>
-                  <td style={{ color: '#4ade80' }}>↓ {formatData(user.download)}</td>
-                  <td style={{ color: '#f87171' }}>↑ {formatData(user.upload)}</td>
-                  <td style={{ color: '#cbd5e1' }}>{user.limit}</td>
+              users.map((u, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #334155' }}>
+                  <td style={{ padding: '15px' }}><span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{u.name}</span><br/><small style={{color: '#64748b'}}>{u.mac}</small></td>
+                  <td>{u.ip}</td>
+                  <td style={{ color: '#fbbf24' }}>{u.uptime}</td>
+                  <td style={{ color: '#4ade80' }}>↓ {toMB(u.download)}</td>
+                  <td style={{ color: '#f87171' }}>↑ {toMB(u.upload)}</td>
+                  <td>{u.limit}</td>
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>কোনো ইউজার বর্তমানে নেট চালাচ্ছে না।</td></tr>
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>বর্তমানে কোনো ইউজার একটিভ নেই।</td></tr>
             )}
           </tbody>
         </table>
