@@ -11,6 +11,9 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "firebase": "latest"
+    "firebase": "latest",
+    "autoprefixer": "latest",
+    "postcss": "latest",
+    "tailwindcss": "latest"
   }
 }
