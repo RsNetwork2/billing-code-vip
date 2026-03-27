@@ -1,38 +1,35 @@
 const admin = require('firebase-admin');
 const RosApi = require('routeros-client').default;
 
-// ১. ফায়ারবেস অ্যাডমিন সেটআপ (আপনার সার্ভিস অ্যাকাউন্ট কী ব্যবহার করুন)
-const serviceAccount = require("./serviceAccountKey.json");
+// ১. পরিবেশ ভেরিয়েবল থেকে ফায়ারবেস কনফিগারেশন নেওয়া
+const firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(firebaseConfig)
 });
+
 const db = admin.firestore();
 
-// ২. মাইক্রোটিক কানেকশন সেটিংস
+// ২. মাইক্রোটিক কানেকশন সেটিংস (রেলওয়ে ভেরিয়েবল থেকে)
 const connection = new RosApi({
-    host: 'YOUR_ROUTER_IP_OR_DDNS', // আপনার রাউটারের আইপি
-    user: 'api_user',
-    password: 'password123'
+    host: process.env.ROUTER_HOST,
+    user: process.env.ROUTER_USER,
+    password: process.env.ROUTER_PASS
 });
 
 console.log("Listening for new users in Firebase...");
 
-// ৩. ফায়ারবেসে নজর রাখা (Real-time Listener)
 db.collection('users').onSnapshot(snapshot => {
     snapshot.docChanges().forEach(async (change) => {
         if (change.type === 'added') {
             const newUser = change.data();
-            console.log("Adding to MikroTik:", newUser.username);
-
             try {
                 const api = await connection.connect();
-                // মাইক্রোটিকে হটস্পট ইউজার যোগ করার কমান্ড
                 await api.write('/ip/hotspot/user/add', [
                     '=name=' + newUser.username,
                     '=password=' + newUser.password,
                     '=profile=' + newUser.package
                 ]);
-                console.log("Successfully added to MikroTik!");
+                console.log(`User ${newUser.username} added successfully!`);
                 api.close();
             } catch (err) {
                 console.error("MikroTik Error:", err);
