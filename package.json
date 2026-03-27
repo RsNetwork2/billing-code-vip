@@ -8,6 +8,7 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "firebase": "latest"
+    "firebase": "latest",
+    "mikrotik-client": "^1.2.1"
   }
 }
