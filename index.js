@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const RosApi = require('routeros-client').default;
+const { RouterOSClient } = require('routeros-client'); // এখানে পরিবর্তন করা হয়েছে
 
 // ১. ফায়ারবেস ইনিশিয়ালাইজেশন
 try {
@@ -23,17 +23,18 @@ async function addMicrotikUser(newUser) {
     const hostWithPort = process.env.ROUTER_HOST || "";
     const [host, port] = hostWithPort.includes(':') ? hostWithPort.split(':') : [hostWithPort, 8728];
 
-    const connection = new RosApi({
+    // এখানে RouterOSClient ব্যবহার করা হয়েছে
+    const client = new RouterOSClient({
         host: host,
         port: parseInt(port) || 8728,
         user: process.env.ROUTER_USER,
         password: process.env.ROUTER_PASS,
-        timeout: 15 // কানেকশন টাইমআউট ১৫ সেকেন্ড
+        timeout: 15
     });
 
     try {
         console.log(`📡 Connecting to MikroTik at ${host}:${port}...`);
-        const api = await connection.connect();
+        const api = await client.connect();
         
         await api.write('/ip/hotspot/user/add', [
             '=name=' + newUser.username,
@@ -42,20 +43,19 @@ async function addMicrotikUser(newUser) {
         ]);
         
         console.log(`✅ User ${newUser.username} added to MikroTik!`);
-        api.close();
+        await api.close();
     } catch (err) {
         console.error("❌ MikroTik Error:", err.message);
     }
 }
 
-// ৩. ফায়ারবেস লিসেনার (নতুন ইউজার বা পরিবর্তন ডিটেক্ট করবে)
+// ৩. ফায়ারবেস লিসেনার
 console.log("⏳ Waiting for changes in Firestore 'users' collection...");
 
 db.collection('users').onSnapshot(snapshot => {
     snapshot.docChanges().forEach((change) => {
         if (change.type === 'added' || change.type === 'modified') {
             const newUser = change.doc.data();
-            // নিশ্চিত হওয়া যে প্রয়োজনীয় ফিল্ডগুলো আছে
             if (newUser.username && newUser.password) {
                 console.log(`🔔 User detected/updated: ${newUser.username}`);
                 addMicrotikUser(newUser);
